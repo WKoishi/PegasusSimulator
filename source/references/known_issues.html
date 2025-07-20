@@ -72,7 +72,7 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Known Issues</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#ros-2-control-backend-not-working-properly">ROS 2 control backend not-working properly</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#fatal-gpu-foundation-plugin-out-of-resource-descriptors">[Fatal] [gpu.foundation.plugin] Out of resource descriptors</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
@@ -107,13 +107,33 @@
              
   <section id="known-issues">
 <h1>Known Issues<a class="headerlink" href="#known-issues" title="Permalink to this heading"></a></h1>
-<section id="ros-2-control-backend-not-working-properly">
-<h2>ROS 2 control backend not-working properly<a class="headerlink" href="#ros-2-control-backend-not-working-properly" title="Permalink to this heading"></a></h2>
-<p>At the moment, the Isaac Sim support for ROS 2 Humble (Ubuntu 22.04LTS) is still a little bit shaky. Since this extension
-was developed on Ubuntu 22.04LTS, I was not able to fully test this functionality yet. Therefore, ROS 2 control backend was
-temporarily disabled in the GUI and the only control backend available when using Pegasus Simulator in extension mode is the PX4/MAVLink
-one. This functionality will be re-activated as soon as it becomes stable. For the meantime, you can use the <a class="reference external" href="https://docs.px4.io/main/en/ros/ros2_comm.html">ROS 2 interface
-provided by the PX4 team</a>.</p>
+<section id="fatal-gpu-foundation-plugin-out-of-resource-descriptors">
+<h2>[Fatal] [gpu.foundation.plugin] Out of resource descriptors<a class="headerlink" href="#fatal-gpu-foundation-plugin-out-of-resource-descriptors" title="Permalink to this heading"></a></h2>
+<p>If you get the error message <code class="docutils literal notranslate"><span class="pre">[Fatal]</span> <span class="pre">[gpu.foundation.plugin]</span> <span class="pre">Out</span> <span class="pre">of</span> <span class="pre">resource</span> <span class="pre">descriptors</span></code> when running Pegasus Simulator, it likely that you are getting above the default limit on the number of file descriptors allowed per process Ubuntu 22.04’s, which is 1024 by default. When using multiple GPUs, Pegasus Simulator on Isaac Sim 4.5.0 uses closer to 1382, leading to Isaac’s Vulkan API back end to crash.
+Raising that system wide limit may solve this issue. You can do this by following these steps:</p>
+<ol class="arabic">
+<li><p>Open a terminal and run the command:</p>
+<blockquote>
+<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>nano<span class="w"> </span>/etc/systemd/user.conf
+
+find,<span class="w"> </span>uncomment,<span class="w"> </span>and<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="nv">DefaultLimitNOFILE</span><span class="o">=</span><span class="m">65535</span>
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+<li><p>Again, modify the following system file:</p>
+<blockquote>
+<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>add<span class="w"> </span>the<span class="w"> </span>following<span class="w"> </span>two<span class="w"> </span>lines<span class="w"> </span>just<span class="w"> </span>above<span class="w"> </span>the<span class="w"> </span><span class="s2">&quot;# End of file&quot;</span><span class="w"> </span>at<span class="w"> </span>the<span class="w"> </span>bottom<span class="w"> </span>of<span class="w"> </span>the<span class="w"> </span>file:
+
+*<span class="w"> </span>hard<span class="w"> </span>nofile<span class="w"> </span><span class="m">65535</span>
+*<span class="w"> </span>soft<span class="w"> </span>nofile<span class="w"> </span><span class="m">65535</span>
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+</ol>
+<p>After this you will need to reboot your machine, but after that, Pegasus Simulator should be working fine on Isaac Sim 4.5.0.</p>
+<p><strong>This guide was provided by</strong> <a class="reference external" href="https://github.com/Austin-Parks">Austin-Parks</a> <strong>, who encountered this issue while running Pegasus Simulator on Ubuntu 22.04 with Isaac Sim 4.5.0. Check the original issue on</strong> <a class="reference external" href="https://github.com/PegasusSimulator/PegasusSimulator/issues/86">Github Issues</a>.</p>
 </section>
 </section>
 

@@ -322,9 +322,9 @@ with <cite>Mavlink</cite>, <cite>PX4</cite> or <cite>ROS</cite> like in other si
 <span class="linenos"> 68</span>
 <span class="linenos"> 69</span>        <span class="c1"># Read the target trajectory from a CSV file inside the trajectories directory</span>
 <span class="linenos"> 70</span>        <span class="c1"># if a trajectory is provided. Otherwise, just perform the hard-coded trajectory provided with this controller</span>
-<span class="linenos"> 71</span>        <span class="k">if</span> <span class="n">trajectory_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<span class="linenos"> 72</span>            <span class="bp">self</span><span class="o">.</span><span class="n">trajectory</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_trajectory_from_csv</span><span class="p">(</span><span class="n">trajectory_file</span><span class="p">)</span>
-<span class="linenos"> 73</span>            <span class="bp">self</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="linenos"> 71</span>        <span class="bp">self</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="linenos"> 72</span>        <span class="k">if</span> <span class="n">trajectory_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<span class="linenos"> 73</span>            <span class="bp">self</span><span class="o">.</span><span class="n">trajectory</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_trajectory_from_csv</span><span class="p">(</span><span class="n">trajectory_file</span><span class="p">)</span>
 <span class="linenos"> 74</span>            <span class="bp">self</span><span class="o">.</span><span class="n">max_index</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trajectory</span><span class="o">.</span><span class="n">shape</span>
 <span class="linenos"> 75</span>            <span class="bp">self</span><span class="o">.</span><span class="n">total_time</span> <span class="o">=</span> <span class="mf">0.0</span>
 <span class="linenos"> 76</span>        <span class="c1"># Use the built-in trajectory hard-coded for this controller</span>
