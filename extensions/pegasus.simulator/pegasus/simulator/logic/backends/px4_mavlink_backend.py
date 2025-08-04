@@ -227,9 +227,9 @@ class PX4MavlinkBackendConfig(BackendConfig):
         # Configurations to interpret the rotors control messages coming from mavlink
         self.enable_lockstep: bool = self.config.get("enable_lockstep", True)
         self.num_rotors: int = self.config.get("num_rotors", 4)
-        self.input_offset = self.config.get("input_offset", [0.0, 0.0, 0.0, 0.0])
-        self.input_scaling = self.config.get("input_scaling", [1000.0, 1000.0, 1000.0, 1000.0])
-        self.zero_position_armed = self.config.get("zero_position_armed", [100.0, 100.0, 100.0, 100.0])
+        self.input_offset = self.config.get("input_offset", [0.0] * self.num_rotors)
+        self.input_scaling = self.config.get("input_scaling", [1000.0] * self.num_rotors)
+        self.zero_position_armed = self.config.get("zero_position_armed", [100.0] * self.num_rotors)
 
         # The update rate at which we will be sending data to mavlink (TODO - remove this from here in the future
         # and infer directly from the function calls)
