@@ -16,7 +16,7 @@ from pegasus.simulator.logic.vehicles.vehicle import Vehicle
 from pegasus.simulator.logic.backends.px4_mavlink_backend import PX4MavlinkBackend, PX4MavlinkBackendConfig
 
 # Sensors and dynamics setup
-from pegasus.simulator.logic.dynamics import LinearDrag
+from pegasus.simulator.logic.dynamics import AerodynamicDrag
 from pegasus.simulator.logic.thrusters import QuadraticThrustCurve
 from pegasus.simulator.logic.sensors import Barometer, IMU, Magnetometer, GPS
 
@@ -38,7 +38,7 @@ class MultirotorConfig:
 
         # The default thrust curve for a quadrotor and dynamics relating to drag
         self.thrust_curve = QuadraticThrustCurve()
-        self.drag = LinearDrag([0.50, 0.30, 0.0])
+        self.drag = AerodynamicDrag()
 
         # The default sensors for a quadrotor
         self.sensors = [Barometer(), IMU(), Magnetometer(), GPS()]
@@ -129,12 +129,15 @@ class Multirotor(Vehicle):
             # Generate the rotating propeller visual effect
             self.handle_propeller_visual(i, forces_z[i], articulation)
 
-        # Apply the torque to the body frame of the vehicle that corresponds to the rolling moment
-        self.apply_torque([0.0, 0.0, rolling_moment], "/body")
+        # Compute the total linear drag force and the drag moment
+        linear_drag, moment = self._drag.update(self._state, dt)
 
-        # Compute the total linear drag force to apply to the vehicle's body frame
-        drag = self._drag.update(self._state, dt)
-        self.apply_force(drag, body_part="/body")
+        # Apply the torque to the body frame of the vehicle that corresponds to the rolling moment
+        moment[2] += rolling_moment
+        self.apply_torque(moment, "/body")
+
+        # Apply to the vehicle's body frame
+        self.apply_force(linear_drag, body_part="/body")
 
         # Call the update methods in all backends
         for backend in self._backends:

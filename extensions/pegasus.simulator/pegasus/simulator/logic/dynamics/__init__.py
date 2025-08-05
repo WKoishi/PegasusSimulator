@@ -5,3 +5,4 @@
 
 from .drag import Drag
 from .linear_drag import LinearDrag
+from .aerodynamic_drag import AerodynamicDrag
