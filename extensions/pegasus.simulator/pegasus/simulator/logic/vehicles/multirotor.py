@@ -86,6 +86,106 @@ class Multirotor(Vehicle):
         # 2. Setup the dynamics of the system - get the thrust curve of the vehicle from the configuration
         self._thrusters = config.thrust_curve
         self._drag = config.drag
+        self._rotor_relative_positions = None
+        self._last_body_wrench = {
+            "frame_id": self._stage_prefix + "/body",
+            "body_frame": "FLU",
+            "actuation": {
+                "force": np.zeros(3, dtype=np.float64),
+                "torque": np.zeros(3, dtype=np.float64),
+            },
+            "drag": {
+                "force": np.zeros(3, dtype=np.float64),
+                "torque": np.zeros(3, dtype=np.float64),
+            },
+            "total": {
+                "force": np.zeros(3, dtype=np.float64),
+                "torque": np.zeros(3, dtype=np.float64),
+            },
+        }
+
+    @property
+    def last_body_wrench(self):
+        """Return the latest wrench components expressed in the body frame."""
+        return {
+            "frame_id": self._last_body_wrench["frame_id"],
+            "body_frame": self._last_body_wrench["body_frame"],
+            "actuation": {
+                "force": self._last_body_wrench["actuation"]["force"].copy(),
+                "torque": self._last_body_wrench["actuation"]["torque"].copy(),
+            },
+            "drag": {
+                "force": self._last_body_wrench["drag"]["force"].copy(),
+                "torque": self._last_body_wrench["drag"]["torque"].copy(),
+            },
+            "total": {
+                "force": self._last_body_wrench["total"]["force"].copy(),
+                "torque": self._last_body_wrench["total"]["torque"].copy(),
+            },
+        }
+
+    def _get_rotor_relative_positions(self):
+        """Return rotor positions relative to the body frame."""
+        if self._rotor_relative_positions is not None:
+            return self._rotor_relative_positions
+
+        dc = self.get_dc_interface()
+        body = dc.get_rigid_body(self._stage_prefix + "/body")
+        rotors = [
+            dc.get_rigid_body(self._stage_prefix + "/rotor" + str(i))
+            for i in range(self._thrusters._num_rotors)
+        ]
+        relative_poses = dc.get_relative_body_poses(body, rotors)
+        self._rotor_relative_positions = [
+            np.array(
+                [pose.p[0], pose.p[1], pose.p[2]],
+                dtype=np.float64,
+            )
+            for pose in relative_poses
+        ]
+        return self._rotor_relative_positions
+
+    def _compute_actuation_wrench(self, forces_z, rolling_moment: float):
+        """Compute thrust-generated body-frame wrench from rotor forces."""
+        force = np.array([0.0, 0.0, float(np.sum(forces_z))], dtype=np.float64)
+        torque = np.zeros(3, dtype=np.float64)
+
+        for rel_pos, thrust in zip(self._get_rotor_relative_positions(), forces_z):
+            rotor_force = np.array([0.0, 0.0, float(thrust)], dtype=np.float64)
+            torque += np.cross(rel_pos, rotor_force)
+
+        torque[2] += float(rolling_moment)
+        return force, torque
+
+    def _update_last_body_wrench(
+        self,
+        actuation_force,
+        actuation_torque,
+        drag_force,
+        drag_torque,
+    ):
+        """Cache latest body-frame wrench components for downstream bridges."""
+        actuation_force = np.asarray(actuation_force, dtype=np.float64).reshape(3)
+        actuation_torque = np.asarray(actuation_torque, dtype=np.float64).reshape(3)
+        drag_force = np.asarray(drag_force, dtype=np.float64).reshape(3)
+        drag_torque = np.asarray(drag_torque, dtype=np.float64).reshape(3)
+
+        self._last_body_wrench = {
+            "frame_id": self._stage_prefix + "/body",
+            "body_frame": "FLU",
+            "actuation": {
+                "force": actuation_force.copy(),
+                "torque": actuation_torque.copy(),
+            },
+            "drag": {
+                "force": drag_force.copy(),
+                "torque": drag_torque.copy(),
+            },
+            "total": {
+                "force": (actuation_force + drag_force).copy(),
+                "torque": (actuation_torque + drag_torque).copy(),
+            },
+        }
 
     def start(self):
         """In this case we do not need to do anything extra when the simulation starts"""
@@ -119,6 +219,10 @@ class Multirotor(Vehicle):
 
         # Get the desired forces to apply to the vehicle
         forces_z, _, rolling_moment = self._thrusters.update(self._state, dt)
+        actuation_force, actuation_torque = self._compute_actuation_wrench(
+            forces_z,
+            rolling_moment,
+        )
 
         # Apply force to each rotor
         for i in range(self._thrusters._num_rotors):
@@ -127,10 +231,18 @@ class Multirotor(Vehicle):
             self.apply_force([0.0, 0.0, forces_z[i]], body_part="/rotor" + str(i))
 
             # Generate the rotating propeller visual effect
-            self.handle_propeller_visual(i, forces_z[i], articulation)
+            # self.handle_propeller_visual(i, forces_z[i], articulation)
 
         # Compute the total linear drag force and the drag moment
         linear_drag, moment = self._drag.update(self._state, dt)
+        drag_force = np.asarray(linear_drag, dtype=np.float64).reshape(3)
+        drag_torque = np.asarray(moment, dtype=np.float64).reshape(3)
+        self._update_last_body_wrench(
+            actuation_force=actuation_force,
+            actuation_torque=actuation_torque,
+            drag_force=drag_force,
+            drag_torque=drag_torque,
+        )
 
         # Apply the torque to the body frame of the vehicle that corresponds to the rolling moment
         moment[2] += rolling_moment
